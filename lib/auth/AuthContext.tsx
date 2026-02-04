@@ -31,9 +31,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Bootstrap auth session on app start
-//   useEffect(() => {
-//     bootstrap();
-//   }, []);
+  useEffect(() => {
+    // run bootstrap on mount
+    bootstrap().catch((err) => {
+      console.error('[Auth] bootstrap failed:', err);
+    });
+  }, []);
 
   const bootstrap = async () => {
     try {

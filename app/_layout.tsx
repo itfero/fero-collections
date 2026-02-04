@@ -72,7 +72,7 @@ function AuthGate() {
 
     hasNavigated.current = true;
     SplashScreen.hideAsync().catch(() => {});
-
+debugger
     if (user) {
       router.replace('/(drawer)');
     } else {
