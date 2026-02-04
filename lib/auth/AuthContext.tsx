@@ -8,10 +8,14 @@ import React, {
   ReactNode,
 } from 'react';
 import { authReducer, initialAuthState, AuthState, AuthAction } from './authReducer';
-import { saveToken, getToken, removeToken, saveUser, getUser, removeUser } from '../services/tokenService';
+// import { saveToken, getToken, removeToken, saveUser, getUser, removeUser } from '../services/tokenService';
 import { loginApi, logoutApi, validateApi } from '../api/authApi';
-import { attachInterceptors } from '../middleware/apiInterceptor';
-
+// import { attachInterceptors } from '../middleware/apiInterceptor';
+import { useRouter } from 'expo-router';
+import { setUnauthorizedHandler } from '../middleware/apiInterceptor';
+import * as SplashScreen from 'expo-splash-screen';
+import { getToken, removeToken, removeUser, saveToken } from '../services/tokenService';
+import { saveUser } from '../auth';
 type AuthContextType = AuthState & {
   dispatch: React.Dispatch<AuthAction>;
   login: (email: string, password: string) => Promise<void>;
@@ -25,10 +29,43 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialAuthState);
 
+  // const [state, dispatch] = useReducer(authReducer, initialAuthState);
+  const router = useRouter();
   // Initialize interceptors once
+  // useEffect(() => {
+  //   attachInterceptors();
+  // }, []);
+  // register a handler so the interceptor can inform us about 401s
   useEffect(() => {
-    attachInterceptors();
-  }, []);
+    setUnauthorizedHandler(async () => {
+      console.debug('[Auth] unauthorized handler invoked');
+
+      // ensure local storage is cleared
+      try {
+        await removeToken();
+        await removeUser();
+      } catch (e) {
+        console.warn('[Auth] error clearing storage during unauthorized handling', e);
+      }
+
+      // update auth state
+      dispatch({ type: 'LOGOUT' });
+
+      // hide splash if it's still visible
+      SplashScreen.hideAsync().catch(() => {});
+
+      // navigate to login
+      try {
+        router.replace('/(auth)/login');
+      } catch (e) {
+        console.warn('[Auth] Failed to navigate to login:', e);
+      }
+    });
+
+    // cleanup on unmount
+    return () => setUnauthorizedHandler(null);
+  }, [router, dispatch]);
+
 
   // Bootstrap auth session on app start
   useEffect(() => {
@@ -57,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await removeToken();
             await removeUser();
             dispatch({ type: 'LOGOUT' });
-          }
+          }debugger
         } catch (error: any) {
           console.error('[Auth] Token validation failed:', error.message);
           await removeToken();
