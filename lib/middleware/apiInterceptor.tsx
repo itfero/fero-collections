@@ -1,7 +1,7 @@
-// lib/middleware/apiInterceptor.ts
+// lib/middleware/apiInterceptor.tsx
 import { Platform } from 'react-native';
-import { getToken, removeToken, removeUser } from '../services/tokenService';
-import * as Router from 'expo-router';
+import { getToken } from '../services/tokenService';
+import { isUnauthorizedSuppressed } from '../auth/authSuppress';
 
 const originalFetch = global.fetch;
 
@@ -11,7 +11,6 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
 }
 
 export const attachInterceptors = () => {
-  console.debug('[Auth] unauthorized handler invoked (will LOGOUT)');
   (global as any).fetch = async (input: RequestInfo, init?: RequestInit) => {
     // Request interceptor: Add Bearer token
     const token = await getToken();
@@ -24,12 +23,8 @@ export const attachInterceptors = () => {
     try {
       const response = await originalFetch(input, requestInit);
 
-      // If response OK just return
-      if (response.ok) {
-        return response;
-      }
+      if (response.ok) return response;
 
-      // Handle error response
       const status = response.status;
       const contentType = response.headers.get('content-type');
       let errorData: any = {};
@@ -44,60 +39,25 @@ export const attachInterceptors = () => {
         errorData = { message: 'Failed to parse error body' };
       }
 
-      // 401 → session expired / unauthorized
-      // if (status === 401) {
-      //   console.warn('[Auth] Session expired or unauthorized:', status);
-
-      //   // Clear saved tokens
-      //   try {
-      //     await removeToken();
-      //     await removeUser();
-      //   } catch (e) {
-      //     console.warn('[Auth] failed clearing tokens:', e);
-      //   }
-
-      //   // Notify React layer (AuthContext) to handle logout/navigation
-      //   if (onUnauthorized) {
-      //     try {
-      //       // call but don't await the handler if it is async - keep interceptor non-blocking
-      //       void onUnauthorized();
-      //     } catch (e) {
-      //       console.warn('[Auth] onUnauthorized handler threw:', e);
-      //     }
-      //   } else {
-      //     console.warn('[Auth] No unauthorized handler registered.');
-      //   }
-      // }
-      if (status === 401) {
-  console.warn('[Auth] Session expired or unauthorized:', status, { url: String(input), method: (requestInit as any).method });
-
-  try {
-    const bodyText = JSON.stringify(errorData).slice(0, 1000);
-    console.warn('[Auth] 401 response body:', bodyText);
-  } catch (_) {}
-
-  // Option A (current): clear tokens here and notify
-  try {
-    await removeToken();
-    await removeUser();
-  } catch (e) {
-    console.warn('[Auth] failed clearing tokens:', e);
+    if (status === 401) {
+  if (isUnauthorizedSuppressed()) {
+    console.warn('[Auth][Interceptor] 401 ignored due to suppression window:', String(input));
+    const err: any = new Error(errorData?.message || `HTTP ${status}`);
+    err.response = { status, data: errorData };
+    return Promise.reject(err);
   }
 
-  if (onUnauthorized) {
-    try { void onUnauthorized(); } catch (e) { console.warn('[Auth] onUnauthorized handler threw:', e); }
-  } else {
-    console.warn('[Auth] No unauthorized handler registered.');
-  }
+  // existing logging + notify handler...
+  if (onUnauthorized) { void onUnauthorized(); }
 }
 
-      const error: any = new Error(errorData?.message || `HTTP ${status}`);
-      error.response = { status, data: errorData };
-      return Promise.reject(error);
+      const err: any = new Error(errorData?.message || `HTTP ${status}`);
+      err.response = { status, data: errorData };
+      return Promise.reject(err);
     } catch (err) {
-      // Network / fetch-level error
       return Promise.reject(err);
     }
   };
 };
-export default {}; // keep default export shape if other files import default
+
+export default {};

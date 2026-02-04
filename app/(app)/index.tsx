@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { getMainTopics, getBrochureTree } from '../../lib/api';
+import { getBrochureTree } from '../../lib/api';
 import { useAuth } from '../../lib/auth/AuthContext';
 import { API_PREFIX, media_PREFIX } from '../../lib/config';
 

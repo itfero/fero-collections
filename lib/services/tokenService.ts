@@ -78,7 +78,7 @@ export const getToken = async (): Promise<string | null> => {
 };
 
 export const removeToken = async (): Promise<void> => {
-  try {
+  try {debugger
     if (SecureStore) {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
     } else if (hasLocalStorage) {

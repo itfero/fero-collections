@@ -12,8 +12,9 @@ export default function DrawerLayout() {
         drawerType: 'front',
         swipeEnabled: true,
 
-        headerLeft: () => (
-          <Pressable
+        headerLeft: ({ tintColor, canGoBack }) => (
+          <>
+          {/* <Pressable
             onPress={() => navigation.toggleDrawer()}
             style={{ paddingHorizontal: 12 }}
           >
@@ -22,7 +23,12 @@ export default function DrawerLayout() {
               size={24}
               color={Platform.OS === 'android' ? '#000' : '#fff'}
             />
-          </Pressable>
+          </Pressable> */}
+          <Pressable onPress={() => navigation.toggleDrawer()} style={{ paddingHorizontal: 12 }}>
+    <MaterialIcons name="menu" size={24} color={tintColor} />
+  </Pressable></>
+          
+          
         ),
 
         headerStyle:

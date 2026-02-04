@@ -1,5 +1,6 @@
 // lib/api.ts
 import { API_PREFIX } from './config';
+import { getToken } from './services/tokenService';
 
 // Simple fetch wrapper with timeout using AbortController.
 async function fetchWithTimeout(input: RequestInfo, init?: RequestInit, timeout = 6000) {
@@ -85,10 +86,10 @@ export async function fetchRows(action: any, formId: any, topicId: any, subTopic
         "imageUrl": imageUrl,
         "sortOrder": sortOrder
     };
-    
+
     console.log(`[AWS] ${action} Request to:`, url);
     console.log(`[AWS] Payload:`, postdata);
-    
+
     try {
         const res = await fetch(url, {
             method: 'POST',
@@ -97,16 +98,16 @@ export async function fetchRows(action: any, formId: any, topicId: any, subTopic
             },
             body: JSON.stringify(postdata),
         });
-        
+
         if (!res.ok) {
             const text = await res.text();
             console.error(`[AWS] Error ${res.status}:`, text);
             throw new Error(`AWS API Error ${res.status}: ${text}`);
         }
-        
+
         const json = await res.json();
         console.log(`[AWS] Response:`, json);
-        
+
         // Handle AWS response format: { msg, success, data: [...] } or direct data
         const result = (action == 'R' ? json?.data : json) ?? [];
         return result;
@@ -281,30 +282,94 @@ type MainTopicItem = {
     delStatus?: boolean;
 };
 
+// export async function getMainTopics(): Promise<MainTopicItem[]> {
+//     const url = `${API_PREFIX}/main-topic`;
+//     console.log('[API] GET', url);
+//     const res = await fetchWithTimeout(url, { method: 'GET' }, 6000);
+//     if (!res.ok) {
+//         const text = await res.text();
+//         throw new Error(`Failed to fetch main topics: ${res.status} ${text}`);
+//     }
+//     const json = await res.json();
+//     // expected shape: { success: true, data: [ { id, name }, ... ] }
+//     return json?.data ?? [];
+// }
+// Guarded getMainTopics
 export async function getMainTopics(): Promise<MainTopicItem[]> {
-    const url = `${API_PREFIX}/main-topic`;
-    console.log('[API] GET', url);
-    const res = await fetchWithTimeout(url, { method: 'GET' }, 6000);
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed to fetch main topics: ${res.status} ${text}`);
+    // short-circuit when no token -> prevents accidental unauthenticated requests
+    const token = await getToken();debugger
+    if (!token) {
+        console.debug('[API] getMainTopics skipped: no auth token present');
+        return []; // safe fallback for UI; change to `throw` if you want to surface this to callers
     }
-    const json = await res.json();
-    // expected shape: { success: true, data: [ { id, name }, ... ] }
-    return json?.data ?? [];
+console.debug('[API] getMainTopics skipped: no auth token present');
+    const url = `${API_PREFIX}/main-topic`;
+    const res = await fetchWithTimeout(
+        url,
+        {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+        },
+        15000
+    );
+
+    const data = await res.json();
+    if (!data.success) {
+        const error: any = new Error(data.error || 'Failed to load main topics');
+        error.response = { status: res.status, data };
+        throw error;
+    }
+
+    return data.data;
 }
 
+// export async function getBrochureTree(): Promise<any[]> {
+//     const url = `${API_PREFIX}/brochure-tree`;
+//     console.log('[API] GET', url);
+//     const res = await fetchWithTimeout(url, { method: 'GET' }, 6000);
+//     if (!res.ok) {
+//         const text = await res.text();
+//         throw new Error(`Failed to fetch brochure tree: ${res.status} ${text}`);
+//     }
+//     const json = await res.json();
+//     // expected shape: { success: true, data: [ { id, name, SubTopics: [ { id, name, SubTitles: [ { id, title, Attachments: [...] } ] } ] } ] }
+//     return json?.data ?? [];
+// }
+
+
+// -------------------------
+// Guarded getBrochureTree
 export async function getBrochureTree(): Promise<any[]> {
-    const url = `${API_PREFIX}/brochure-tree`;
-    console.log('[API] GET', url);
-    const res = await fetchWithTimeout(url, { method: 'GET' }, 6000);
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed to fetch brochure tree: ${res.status} ${text}`);
+    const token = await getToken();
+    if (!token) {
+        console.debug('[API] getBrochureTree skipped: no auth token present');
+        return []; // safe fallback
     }
-    const json = await res.json();
-    // expected shape: { success: true, data: [ { id, name, SubTopics: [ { id, name, SubTitles: [ { id, title, Attachments: [...] } ] } ] } ] }
-    return json?.data ?? [];
+debugger
+    const url = `${API_PREFIX}/brochure-tree`;
+    const res = await fetchWithTimeout(
+        url,
+        {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+        },
+        15000
+    );
+
+    const data = await res.json();
+    if (!data.success) {
+        const error: any = new Error(data.error || 'Failed to load brochure tree');
+        error.response = { status: res.status, data };
+        throw error;
+    }
+
+    return data.data;
 }
 
 export async function createMainTopic(payload: { name: string; sortOrder?: number; delStatus?: boolean }): Promise<MainTopicItem> {
@@ -338,7 +403,7 @@ export async function updateMainTopic(payload: { name: string; id: string | numb
     }
     const json = await res.json();
     console.log('out', json);
-    
+
     return json?.data ?? null;
 }
 

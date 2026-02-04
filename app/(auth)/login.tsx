@@ -45,7 +45,7 @@ export default function LoginScreen() {
         // TEMP TEST: force navigate to drawer to ensure router works from here
         // If this works, AuthGate detection is the issue.
         try {
-          router.replace('/(drawer)');
+          // router.replace('/(drawer)');
           console.debug('[LoginScreen] router.replace(/(drawer)) called');
         } catch (navErr) {
           console.error('[LoginScreen] manual navigation failed:', navErr);

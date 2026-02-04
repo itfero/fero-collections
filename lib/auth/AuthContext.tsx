@@ -19,6 +19,7 @@ import { saveUser } from '../auth';
 
 import { attachInterceptors } from '../middleware/apiInterceptor';
 import { useRef } from 'react';
+import { suppressUnauthorizedFor } from './authSuppress';
 type AuthContextType = AuthState & {
   dispatch: React.Dispatch<AuthAction>;
   login: (email: string, password: string) => Promise<void>;
@@ -35,49 +36,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // const [state, dispatch] = useReducer(authReducer, initialAuthState);
   const router = useRouter();
   // Initialize interceptors once (attach global fetch wrapper)
-useEffect(() => {
-  attachInterceptors();
-}, []);
+  useEffect(() => {
+    try {
+      attachInterceptors();
+    } catch (e) {
+      console.warn('[Auth] attachInterceptors failed:', e);
+    }
+  }, []);
 
 // prevent multiple simultaneous unauthorized handling
-const unauthorizedHandledRef = useRef(false);
 
-useEffect(() => {
-  setUnauthorizedHandler(async () => {
-    // debounce: if already handling, ignore
-    if (unauthorizedHandledRef.current) {
-      console.debug('[Auth] unauthorized handler already running, ignoring duplicate');
-      return;
-    }
-    unauthorizedHandledRef.current = true;
+const handlingUnauthorizedRef = useRef(false);
 
-    console.debug('[Auth] unauthorized handler invoked');
+  useEffect(() => {
+    setUnauthorizedHandler(async () => {
+      // If an unauthorized handling is already in progress, ignore duplicates
+      if (handlingUnauthorizedRef.current) {
+        console.debug('[Auth] unauthorized handler already running - ignoring duplicate');
+        return;
+      }
+      handlingUnauthorizedRef.current = true;
 
-    try {
-      await removeToken();
-      await removeUser();
-    } catch (e) {
-      console.warn('[Auth] error clearing storage during unauthorized handling', e);
-    }
+      // Small delay to allow in-flight login/saveToken to finish (avoids spurious logout)
+      await new Promise((res) => setTimeout(res, 150));
 
-    dispatch({ type: 'LOGOUT' });
+      try {
+        // Confirm whether token still exists (if not, nothing to do)
+        const tokenNow = await getToken();
+        if (!tokenNow) {
+          console.debug('[Auth] no token present on unauthorized handler - skipping');
+          return;
+        }
 
-    SplashScreen.hideAsync().catch(() => {});
+        console.debug('[Auth] handling unauthorized: clearing local data and logging out');
 
-    try {
-      router.replace('/(auth)/login');
-    } catch (e) {
-      console.warn('[Auth] Failed to navigate to login:', e);
-    } finally {
-      // small delay before allowing handler to run again
-      setTimeout(() => {
-        unauthorizedHandledRef.current = false;
-      }, 1000);
-    }
-  });
+        // Clear local storage
+        try {
+          await removeToken();
+          await removeUser();
+        } catch (e) {
+          console.warn('[Auth] error clearing storage during unauthorized handling', e);
+        }
 
-  return () => setUnauthorizedHandler(null);
-}, [router, dispatch]);
+        // Update auth state
+        dispatch({ type: 'LOGOUT' });
+
+        // Hide splash if visible and navigate
+        SplashScreen.hideAsync().catch(() => {});
+        try {
+          router.replace('/(auth)/login');
+        } catch (e) {
+          console.warn('[Auth] Failed to navigate to login:', e);
+        }
+      } finally {
+        // Allow future unauthorized handling after short cooldown
+        setTimeout(() => {
+          handlingUnauthorizedRef.current = false;
+        }, 800);
+      }
+    });
+
+    return () => setUnauthorizedHandler(null);
+  }, [router, dispatch]);
+
   // Initialize interceptors once
   // useEffect(() => {
   //   attachInterceptors();
@@ -131,7 +152,7 @@ useEffect(() => {
         // Token exists, validate with backend
         try {
           const res = await validateApi();
-          const user = res?.user;
+          const user = res?.data?.user;
           if (user) {
             dispatch({
               type: 'RESTORE_TOKEN',
@@ -161,6 +182,9 @@ useEffect(() => {
   };
 
   const login = async (email: string, password: string) => {
+    
+  // suppress 401 handling for a short window (e.g., 1000ms)
+  suppressUnauthorizedFor(1000);
     dispatch({ type: 'LOGIN_START' });
     try {
       const res = await loginApi(email, password);
@@ -212,7 +236,7 @@ console.debug('[Auth] token saved? ', !!storedToken, { storedToken });
   const validateSession = async () => {
     try {
       const res = await validateApi();
-      const user = res?.user;
+      const user = res?.data?.user;
       const token = await getToken();
 
       if (user && token) {
