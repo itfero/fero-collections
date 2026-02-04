@@ -1,0 +1,41 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Expo / React Native
+.expo/
+dist/
+build/
+web-build/
+
+# Env files
+.env
+.env.local
+.env.production
+.env.development
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+.tmp/
+
+# Android / iOS
+android/.gradle/
+android/build/
+ios/build/
+
+# Mac
+*.swp
