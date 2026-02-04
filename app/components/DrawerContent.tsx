@@ -54,7 +54,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
         {/* Sub Topic Master group */}
         <Pressable style={styles.item} onPress={() => setMasterOpen(prev => !prev)}>
           <MaterialIcons name="collections" size={20} color="#333" />
-          <Text style={styles.itemText}>Sub Topic Master</Text>
+          <Text style={styles.itemText}>Master</Text>
           <MaterialIcons name={masterOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={20} color="#333" style={{ marginLeft: 'auto' }} />
         </Pressable>
 

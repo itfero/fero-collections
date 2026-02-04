@@ -11,6 +11,7 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
 }
 
 export const attachInterceptors = () => {
+  console.debug('[Auth] unauthorized handler invoked (will LOGOUT)');
   (global as any).fetch = async (input: RequestInfo, init?: RequestInit) => {
     // Request interceptor: Add Bearer token
     const token = await getToken();

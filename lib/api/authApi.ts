@@ -212,16 +212,16 @@ export async function resetPasswordApi(token: string, newPassword: string) {
 export async function validateApi() {
   const url = `${API_PREFIX}/auth/validate`;
   const token = await getToken();
-
+debugger
   const res = await fetchWithTimeout(
     url,
     {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({}),
+      // body: JSON.stringify({}),
     },
     15000
   );

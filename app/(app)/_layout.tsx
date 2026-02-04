@@ -21,10 +21,15 @@ function AuthGate() {
 
   useEffect(() => {
     // Wait until auth initialization completes
+    console.debug('[AuthGate] effect run', { loading, user }); // <
     if (loading) {
       console.debug('[AuthGate] waiting for loading to finish');
       return;
     }
+    // app/_layout.tsx inside AuthGate effect
+console.debug('[AuthGate] effect run (before checks)', { loading, user });
+if (loading) return;
+console.debug('[AuthGate] effect run (after loading false)', { user });
 
     // If not mounted yet, wait for mount
     if (!mounted.current) return;

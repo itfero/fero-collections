@@ -1,48 +1,3 @@
-// import { Slot, useRouter } from 'expo-router';
-// import * as SplashScreen from 'expo-splash-screen';
-// import { useEffect, useRef, useState } from 'react';
-// import { AuthProvider, useAuth } from '../../lib/AuthContext';
-
-// SplashScreen.preventAutoHideAsync().catch(() => {});
-
-// function AuthGate() {
-//   const { user, loading } = useAuth();
-//   const router = useRouter();
-
-//   const hasNavigated = useRef(false);
-//   const [mounted, setMounted] = useState(false);
-
-//   // 1️⃣ Mark layout as mounted
-//   useEffect(() => {
-//     setMounted(true);
-//   }, []);
-
-//   // 2️⃣ Navigate ONLY after mount + auth resolved
-//   useEffect(() => {
-//     if (!mounted || loading || hasNavigated.current) return;
-
-//     hasNavigated.current = true;
-
-//     SplashScreen.hideAsync().catch(() => {});
-// debugger;
-//     if (user) {
-//       router.replace('/(app)/');
-//     } else {
-//       router.replace('/(auth)/login');
-//     }
-//   }, [mounted, loading, user]);
-
-//   // 3️⃣ Slot MUST always render
-//   return <Slot />;
-// }
-
-// export default function RootLayout() {
-//   return (
-//     <AuthProvider>
-//       <AuthGate />
-//     </AuthProvider>
-//   );
-// }
 import React, { useState } from 'react';
 import {
   View,
@@ -57,12 +12,15 @@ import {
   Platform,
 } from 'react-native';
 import { useAuth } from '../../lib/auth/AuthContext';
+import { useRouter } from 'expo-router';
+import { showSuccessToast } from '../../lib/utils/toast';
 
 export default function LoginScreen() {
   const { login, loading, error } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState('');
+  const router = useRouter();
 
   const handleLogin = async () => {
     setLocalError('');
@@ -80,6 +38,26 @@ export default function LoginScreen() {
     try {
       await login(email.trim(), password);
       // Navigation is handled automatically by the root layout
+      try {
+        await login(email.trim(), password);
+        console.debug('[LoginScreen] login() resolved');
+
+        // TEMP TEST: force navigate to drawer to ensure router works from here
+        // If this works, AuthGate detection is the issue.
+        try {
+          router.replace('/(drawer)');
+          console.debug('[LoginScreen] router.replace(/(drawer)) called');
+        } catch (navErr) {
+          console.error('[LoginScreen] manual navigation failed:', navErr);
+        }
+
+        // show toast
+        showSuccessToast('Logged in successfully', 'Welcome');
+      } catch (err: any) {
+        const message = err.response?.data?.message || err.message || 'Login failed';
+        setLocalError(message);
+        Alert.alert('Login Error', message);
+      }
     } catch (err: any) {
       const message = err.response?.data?.message || err.message || 'Login failed';
       setLocalError(message);

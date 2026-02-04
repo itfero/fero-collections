@@ -74,7 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('[Auth] bootstrap failed:', err);
     });
   }, []);
-
+useEffect(() => {
+  console.debug('[Auth] state changed', state);
+}, [state]);
   const bootstrap = async () => {
     try {
       const token = await getToken();
@@ -131,6 +133,10 @@ debugger
         user,
         token,
       });
+       console.debug('[Auth] LOGIN_SUCCESS dispatched', { user, token });
+       
+const storedToken = await getToken();
+console.debug('[Auth] token saved? ', !!storedToken, { storedToken });
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || error.message || 'Login failed';
       console.error('[Auth] Login error:', errorMsg);

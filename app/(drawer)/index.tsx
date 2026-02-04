@@ -1,14 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import IndexScreen from '../(app)';
 
 export default function HomeScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Fero Collections</Text>
-      <Text style={styles.subtitle}>
-        Welcome to the brochure app
-      </Text>
-    </View>
+    // <View style={styles.container}>
+    //   <Text style={styles.title}>Fero Collections</Text>
+    //   <Text style={styles.subtitle}>
+    //     Welcome to the brochure app
+    //   </Text>
+      <IndexScreen />
+    // </View>
   );
 }
 
