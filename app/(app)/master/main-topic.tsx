@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { brochureData as localData, Topic as LocalTopic } from '../../../data/brochureData';
 import { MaterialIcons } from '@expo/vector-icons';
 import { getMainTopics, createMainTopic, updateMainTopic, deleteMainTopic } from '../../../lib/api';
+import { useAuth } from '../../../lib/auth/AuthContext';
 
 /**
  * This screen now:
@@ -56,7 +57,15 @@ export default function MainTopicScreen() {
   const [editingName, setEditingName] = useState('');
 
   const inlineInputRef = useRef<TextInput | null>(null);
+const { user } = useAuth();
 
+useEffect(() => {debugger
+  if (!user) {
+    console.debug('[ScreenName] user not available, skipping loadData');
+    return;
+  };
+  // loadData();
+}, [user]);
   useEffect(() => {
     // fetch remote rows then map to topics
     let mounted = true;

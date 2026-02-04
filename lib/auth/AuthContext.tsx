@@ -16,6 +16,9 @@ import { setUnauthorizedHandler } from '../middleware/apiInterceptor';
 import * as SplashScreen from 'expo-splash-screen';
 import { getToken, removeToken, removeUser, saveToken } from '../services/tokenService';
 import { saveUser } from '../auth';
+
+import { attachInterceptors } from '../middleware/apiInterceptor';
+import { useRef } from 'react';
 type AuthContextType = AuthState & {
   dispatch: React.Dispatch<AuthAction>;
   login: (email: string, password: string) => Promise<void>;
@@ -31,6 +34,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // const [state, dispatch] = useReducer(authReducer, initialAuthState);
   const router = useRouter();
+  // Initialize interceptors once (attach global fetch wrapper)
+useEffect(() => {
+  attachInterceptors();
+}, []);
+
+// prevent multiple simultaneous unauthorized handling
+const unauthorizedHandledRef = useRef(false);
+
+useEffect(() => {
+  setUnauthorizedHandler(async () => {
+    // debounce: if already handling, ignore
+    if (unauthorizedHandledRef.current) {
+      console.debug('[Auth] unauthorized handler already running, ignoring duplicate');
+      return;
+    }
+    unauthorizedHandledRef.current = true;
+
+    console.debug('[Auth] unauthorized handler invoked');
+
+    try {
+      await removeToken();
+      await removeUser();
+    } catch (e) {
+      console.warn('[Auth] error clearing storage during unauthorized handling', e);
+    }
+
+    dispatch({ type: 'LOGOUT' });
+
+    SplashScreen.hideAsync().catch(() => {});
+
+    try {
+      router.replace('/(auth)/login');
+    } catch (e) {
+      console.warn('[Auth] Failed to navigate to login:', e);
+    } finally {
+      // small delay before allowing handler to run again
+      setTimeout(() => {
+        unauthorizedHandledRef.current = false;
+      }, 1000);
+    }
+  });
+
+  return () => setUnauthorizedHandler(null);
+}, [router, dispatch]);
   // Initialize interceptors once
   // useEffect(() => {
   //   attachInterceptors();

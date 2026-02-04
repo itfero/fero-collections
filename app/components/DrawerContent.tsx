@@ -15,8 +15,21 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
   const username = user?.data?.[0]?.UserName ?? 'User';
   const email = user?.data?.[0]?.Email ?? '';
 
+  // const navigate = (path: string) => {
+  //   props.navigation.closeDrawer?.();
+  //   // push so it behaves like normal navigation; replace if you want to prevent back
+  //   router.push(path);
+  // };
   const navigate = (path: string) => {
     props.navigation.closeDrawer?.();
+
+    // If user is not authenticated, send them to login instead of pushing protected routes
+    if (!user) {
+      console.debug('[DrawerContent] user not authenticated, redirecting to login');
+      router.replace('/(auth)/login');
+      return;
+    }
+
     // push so it behaves like normal navigation; replace if you want to prevent back
     router.push(path);
   };

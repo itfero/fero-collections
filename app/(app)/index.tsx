@@ -106,9 +106,18 @@ export default function IndexScreen() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // useEffect(() => {
+  //   loadData();
+  // }, []);
+useEffect(() => {
+  // Wait until we have an authenticated user before loading protected data
+  if (!user) {
+    console.debug('[Index] user not available yet, skipping loadData');
+    return;
+  }
+
+  loadData();
+}, [user]); // run when user becomes available
 
   /* ---------------- UI ---------------- */
 

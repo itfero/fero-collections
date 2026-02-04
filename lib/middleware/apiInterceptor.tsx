@@ -45,29 +45,51 @@ export const attachInterceptors = () => {
       }
 
       // 401 → session expired / unauthorized
+      // if (status === 401) {
+      //   console.warn('[Auth] Session expired or unauthorized:', status);
+
+      //   // Clear saved tokens
+      //   try {
+      //     await removeToken();
+      //     await removeUser();
+      //   } catch (e) {
+      //     console.warn('[Auth] failed clearing tokens:', e);
+      //   }
+
+      //   // Notify React layer (AuthContext) to handle logout/navigation
+      //   if (onUnauthorized) {
+      //     try {
+      //       // call but don't await the handler if it is async - keep interceptor non-blocking
+      //       void onUnauthorized();
+      //     } catch (e) {
+      //       console.warn('[Auth] onUnauthorized handler threw:', e);
+      //     }
+      //   } else {
+      //     console.warn('[Auth] No unauthorized handler registered.');
+      //   }
+      // }
       if (status === 401) {
-        console.warn('[Auth] Session expired or unauthorized:', status);
+  console.warn('[Auth] Session expired or unauthorized:', status, { url: String(input), method: (requestInit as any).method });
 
-        // Clear saved tokens
-        try {
-          await removeToken();
-          await removeUser();
-        } catch (e) {
-          console.warn('[Auth] failed clearing tokens:', e);
-        }
+  try {
+    const bodyText = JSON.stringify(errorData).slice(0, 1000);
+    console.warn('[Auth] 401 response body:', bodyText);
+  } catch (_) {}
 
-        // Notify React layer (AuthContext) to handle logout/navigation
-        if (onUnauthorized) {
-          try {
-            // call but don't await the handler if it is async - keep interceptor non-blocking
-            void onUnauthorized();
-          } catch (e) {
-            console.warn('[Auth] onUnauthorized handler threw:', e);
-          }
-        } else {
-          console.warn('[Auth] No unauthorized handler registered.');
-        }
-      }
+  // Option A (current): clear tokens here and notify
+  try {
+    await removeToken();
+    await removeUser();
+  } catch (e) {
+    console.warn('[Auth] failed clearing tokens:', e);
+  }
+
+  if (onUnauthorized) {
+    try { void onUnauthorized(); } catch (e) { console.warn('[Auth] onUnauthorized handler threw:', e); }
+  } else {
+    console.warn('[Auth] No unauthorized handler registered.');
+  }
+}
 
       const error: any = new Error(errorData?.message || `HTTP ${status}`);
       error.response = { status, data: errorData };
